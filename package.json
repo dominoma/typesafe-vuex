@@ -1,0 +1,32 @@
+{
+  "name": "typesafe-vuex",
+  "version": "1.0.0",
+  "description": "A projekt making vuex typescript-ready",
+  "main": "dist/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dominoma/typesafe-vuex.git"
+  },
+  "keywords": [
+    "typescript",
+    "vuex"
+  ],
+  "author": "Dominik Sander <dominik.m.sander@t-online.de>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/dominoma/typesafe-vuex/issues"
+  },
+  "homepage": "https://github.com/dominoma/typesafe-vuex#readme",
+  "devDependencies": {
+    "ts-loader": "^6.0.4",
+    "typescript": "^3.5.2",
+    "webpack": "^4.35.0"
+  },
+  "dependencies": {
+    "@types/node": "^12.0.10",
+    "vuex": "^3.1.1"
+  }
+}
