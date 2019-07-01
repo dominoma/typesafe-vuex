@@ -43,14 +43,18 @@
 //     }
 
 // }
-import { ModuleData, ModuleOf } from "./moduletypes";
+import { ModuleData, ModuleOf, StoreOf } from "./types";
 type PlaylistState = {
     test: boolean,
     soo: string
 }
 type PlaylistActions = {
-    load(payload : {}):Promise<void>,
+    load():Promise<void>,
     save(payload : { t: boolean }):Promise<void>,
+}
+type SubPlaylistActions = {
+    loaddd():Promise<void>,
+    savedd(payload : { t: boolean }):Promise<void>,
 }
 type PlaylistMutations = {
     add(payload : {}):void
@@ -59,18 +63,23 @@ type PlaylistGetters = {
     test: string;
     count(n : number):string
 }
-
-let y : ModuleData<PlaylistState,PlaylistActions,PlaylistMutations,PlaylistGetters,{}> = {
+type SubPlaylistGetters = {
+    testt: string;
+    countt(n : number):string
+}
+type SubSubPlaylistModule = ModuleData<{},PlaylistMutations, {viel:string}>;
+type SubPlaylistModule = ModuleData<PlaylistState,PlaylistMutations,SubPlaylistGetters,SubPlaylistActions,{ go: SubSubPlaylistModule }, false, PlaylistModule>;
+let y : SubPlaylistModule = {
     namespaced: false,
     state: {
         test: false,
         soo: ""
     },
     actions: {
-        async load(context, payload) {
+        async loaddd(context) {
             
         },
-        async save(context, payload) {
+        async savedd(context, payload) {
             
         }
     },
@@ -80,26 +89,43 @@ let y : ModuleData<PlaylistState,PlaylistActions,PlaylistMutations,PlaylistGette
         }
     },
     getters: {
-        test(state, getters) {
+        testt(state, getters, root) {
             return "";
         },
-        count(state, getters) {
+        countt(state, getters) {
             return ()=>{
                 return "";
             }
         }
     },
     modules: {
+        go: {
+            namespaced: true,
+            state: {},
+            actions: {},
+            mutations: {
+                add(state, payload) {
+            
+                }
+            },
+            getters: {
+                viel() {
+                    return "";
+                }
+            },
+            modules: {}
+        }
     }
 }
-let x : ModuleData<PlaylistState,PlaylistActions,PlaylistMutations,PlaylistGetters,{ test: typeof y }> = {
-    namespaced: false,
+type PlaylistModule = ModuleData<PlaylistState,PlaylistMutations,PlaylistGetters,PlaylistActions, { comit: SubPlaylistModule }>;
+let x : PlaylistModule = {
+    namespaced: true,
     state: {
         test: false,
         soo: ""
     },
     actions: {
-        async load(context, payload) {
+        async load(context) {
             
         },
         async save(context, payload) {
@@ -122,8 +148,9 @@ let x : ModuleData<PlaylistState,PlaylistActions,PlaylistMutations,PlaylistGette
         }
     },
     modules: {
-        test: y
+        comit: y
     }
 }
 type t = typeof x;
-let z = {} as ModuleOf<t>;
+let z = {} as StoreOf<t>;
+
