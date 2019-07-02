@@ -43,7 +43,8 @@
 //     }
 
 // }
-import { ModuleData, ModuleOf, StoreOf } from "./types";
+import { ModuleData, ModuleOf, StoreOf, DispatchOf, RootDispatchOf, Action } from "./types";
+import { userInfo } from "os";
 type PlaylistState = {
     test: boolean,
     soo: string
@@ -53,7 +54,10 @@ type PlaylistActions = {
     save(payload : { t: boolean }):Promise<void>,
 }
 type SubPlaylistActions = {
-    loaddd():Promise<void>,
+    loaddd: {
+        root: true,
+        handler():Promise<void>
+    }
     savedd(payload : { t: boolean }):Promise<void>,
 }
 type PlaylistMutations = {
@@ -68,9 +72,9 @@ type SubPlaylistGetters = {
     countt(n : number):string
 }
 type SubSubPlaylistModule = ModuleData<{},PlaylistMutations, {viel:string}>;
-type SubPlaylistModule = ModuleData<PlaylistState,PlaylistMutations,SubPlaylistGetters,SubPlaylistActions,{ go: SubSubPlaylistModule }, false, PlaylistModule>;
+type SubPlaylistModule = ModuleData<PlaylistState,PlaylistMutations,SubPlaylistGetters,SubPlaylistActions,{ go: SubSubPlaylistModule }, true, PlaylistModule>;
 let y : SubPlaylistModule = {
-    namespaced: false,
+    namespaced: true,
     state: {
         test: false,
         soo: ""
@@ -151,6 +155,5 @@ let x : PlaylistModule = {
         comit: y
     }
 }
-type t = typeof x;
-let z = {} as StoreOf<t>;
 
+let z = {} as StoreOf<typeof x>;

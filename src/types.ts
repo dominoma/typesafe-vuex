@@ -14,8 +14,14 @@ export type IntersectionOf<T extends {}> = {
  * Action type used to declare a Module action
  * @param P payload type of action
  * @param R return type of action
+ * @param ToRoot boolean representing action should be registred in root or in module
  */
-export type Action<P, R> = ((payload : P) => Promise<R>) | (() => Promise<R>);
+export type ModuleAction<P, R> = ((payload : P) => Promise<R>) | (() => Promise<R>);
+export type RootAction<P, R> = {
+    root: true;
+    handler: ((payload : P) => Promise<R>) | (() => Promise<R>)
+}
+export type Action<P, R> = RootAction<P, R> | ModuleAction<P, R>;
 type BasicAction = Action<any, any>;
 /**
  * Declaration type for Module actions
@@ -139,13 +145,13 @@ type ActionHandlerOf<T extends BasicAction, Context extends BasicActionContext>
 type ActionHandlerTreeOf<T extends ActionTree, Context extends BasicActionContext> = {
     [key in keyof T]: ActionHandlerOf<T[key], Context>;
 }
-type ActionOf<T extends BasicActionHandler>
-    = T extends ActionHandler<any, infer P, infer R>
-        ? Action<P, R>
-        : never;
-type ActionTreeOf<T extends ActionHandlerTree> = {
-    [key in keyof T]: ActionOf<T[key]>;
-}
+// type ActionOf<T extends BasicActionHandler>
+//     = T extends ActionHandler<any, infer P, infer R>
+//         ? Action<P, R>
+//         : never;
+// type ActionTreeOf<T extends ActionHandlerTree> = {
+//     [key in keyof T]: ActionOf<T[key]>;
+// }
 
 type MutationHandlerOf<T extends BasicMutation, State>
     = T extends Mutation<infer P>
@@ -155,13 +161,13 @@ type MutationHandlerOf<T extends BasicMutation, State>
 type MutationHandlerTreeOf<T extends MutationTree, State> = {
     [key in keyof T]: MutationHandlerOf<T[key], State>;
 }
-type MutationOf<T extends BasicMutationHandler>
-    = T extends MutationHandler<any, infer P>
-        ? Mutation<P>
-        : never;
-type MutationTreeOf<T extends MutationHandlerTree> = {
-    [key in keyof T]: MutationOf<T[key]>;
-}
+// type MutationOf<T extends BasicMutationHandler>
+//     = T extends MutationHandler<any, infer P>
+//         ? Mutation<P>
+//         : never;
+// type MutationTreeOf<T extends MutationHandlerTree> = {
+//     [key in keyof T]: MutationOf<T[key]>;
+// }
 
 type GetterHandlerOf<T extends BasicGetter, State, GTree extends GetterTree, RMD extends BasicModuleData = never>
     = T extends Getter<infer R>
@@ -171,25 +177,32 @@ type GetterHandlerOf<T extends BasicGetter, State, GTree extends GetterTree, RMD
 type GetterHandlerTreeOf<T extends GetterTree, State, RMD extends BasicModuleData> = {
     [key in keyof T]: GetterHandlerOf<T[key], State, T, RMD>;
 }
-type GetterOf<T extends BasicGetterHandler>
-    = T extends GetterHandler<any, any, infer R>
-        ? R 
-        : never;
-type GetterTreeOf<T extends GetterHandlerTree> = {
-    [key in keyof T]: GetterOf<T[key]>;
-}
+// type GetterOf<T extends BasicGetterHandler>
+//     = T extends GetterHandler<any, any, infer R>
+//         ? R 
+//         : never;
+// type GetterTreeOf<T extends GetterHandlerTree> = {
+//     [key in keyof T]: GetterOf<T[key]>;
+// }
 
-type ActionReturn<T extends BasicAction> 
-    = T extends Action<any, infer R> ? R : never;
-type ActionPayload<T extends BasicAction> 
-    = T extends Action<infer P, any> ? P : never;
+// type ActionReturn<T extends BasicAction> 
+//     = T extends Action<any, infer R, any> ? R : never;
+// type ActionPayload<T extends BasicAction> 
+//     = T extends Action<infer P, any, any> ? P : never;
 
 type Dispatch<Name extends string | number | symbol, P, R> 
     = unknown extends P
         ? ((name : Name) => Promise<R>) & ((args : { type : Name })=>R)
         : ((name : Name, payload : P) => Promise<R>) & ((args : { type : Name } & P)=>R);
-type DispatchOf<ATree extends ActionTree> = IntersectionOf<{
-    [name in keyof ATree]: Dispatch<name, ActionPayload<ATree[name]>, ActionReturn<ATree[name]>>
+export type DispatchOf<ATree extends ActionTree> = IntersectionOf<{
+    [name in keyof ATree]: ATree[name] extends ModuleAction<infer P, infer R> 
+        ? Dispatch<name, P, R>
+        : unknown;
+}>;
+export type RootDispatchOf<ATree extends ActionTree> = IntersectionOf<{
+    [name in keyof ATree]: ATree[name] extends RootAction<infer P, infer R> 
+        ? Dispatch<name, P, R>
+        : unknown;
 }>;
 
 type MutationPayload<T extends BasicMutation> 
@@ -233,7 +246,8 @@ type ModuleDataTree = {
 };
 export type Reserved<B, T extends B, K extends string> 
     = Omit<T, K> extends T ? B : never;
-type ModuleReserved<T extends ModuleDataTree> = Reserved<ModuleDataTree, T, "commit" | "dispatch" | "getters" | "state">;
+type ModuleReservedKeys = "commit" | "dispatch" | "getters" | "state";
+type ModuleReserved<T extends ModuleDataTree> = Reserved<ModuleDataTree, T, ModuleReservedKeys>;
 
 export type Module<Getters extends GetterTree, C, D, Modules extends ModuleTree> = {
     readonly getters: Readonly<Getters>;
@@ -293,7 +307,9 @@ type RootDataOf<M extends BasicModuleData>
                 dispatch: DispatchOf<ATree>,
                 getters: Readonly<GTree>
             } & RootDataOfTree<SMTree>
-            : RootDataOfTree<SMTree>
+            : RootDataOfTree<SMTree> & {
+                dispatch: RootDispatchOf<ATree>
+            }
         : never;
 type RootDataOfTree<T extends ModuleDataTree> = IntersectionOf<{
     [key in keyof T]: RootDataOf<T[key]>;
