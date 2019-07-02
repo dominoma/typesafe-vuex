@@ -43,7 +43,7 @@
 //     }
 
 // }
-import { ModuleData, ModuleOf, StoreOf, DispatchOf, RootDispatchOf, Action } from "./types";
+import { ModuleData, StoreOf } from "./module";
 import { userInfo } from "os";
 type PlaylistState = {
     test: boolean,
@@ -80,8 +80,11 @@ let y : SubPlaylistModule = {
         soo: ""
     },
     actions: {
-        async loaddd(context) {
-            
+        loaddd: {
+            root: true,
+            async handler(context) {
+                
+            }
         },
         async savedd(context, payload) {
             
