@@ -10,9 +10,12 @@ export type IntersectionOf<T extends {}> = {
     [key in keyof T]: (dummy : T[key])=>void;
 } extends { [key:string] : (dummy : infer R)=>void } ? R : never;
 
-export type BasicMap<V = any> = {
+export type BasicMap<V = unknown> = {
     [key:string]: V
 }
+export type DeepReadonly<O> = O extends BasicMap ? {
+    readonly [key in keyof O]: DeepReadonly<O[key]>;
+} : O;
 // type BasicActionHandler = ActionHandler<any,any,any>;
 // /**
 //  * Definition type for Module actions

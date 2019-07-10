@@ -1,7 +1,7 @@
-import { MutationTree, MutationHandlerTreeOf, CommitOf } from "./mutation";
-import { ActionTree, ActionHandlerTreeOf, ActionContext, RootDispatchOf, DispatchOf } from "./action";
-import { GetterTree, GetterHandlerTreeOf } from "./getter";
-import { IntersectionOf } from "./types";
+import { MutationTree, MutationHandlerTreeOf, CommitOf, BasicMutationHandlerTree } from "./mutation";
+import { ActionTree, ActionHandlerTreeOf, ActionContext, RootDispatchOf, DispatchOf, BasicActionHandlerTree } from "./action";
+import { GetterTree, GetterHandlerTreeOf, BasicGetterHandlerTree } from "./getter";
+import { IntersectionOf, BasicMap } from "./types";
 
 export type ModuleData<
     State, 
@@ -28,7 +28,14 @@ export type ModuleData<
     getters: GetterHandlerTreeOf<GTree, State, RootModuleData>;
     modules: SubModuleTree;
 }
-type BasicModuleData = ModuleData<any,any,any,any,any,any>;
+export type BasicModuleData = {
+    namespaced: boolean;
+    state: any;
+    actions: BasicActionHandlerTree;
+    mutations: BasicMutationHandlerTree;
+    getters: BasicGetterHandlerTree;
+    modules: ModuleDataTree;
+};
 type ModuleDataTree = {
     [key:string]: BasicModuleData;
 };
@@ -95,3 +102,6 @@ export type StoreOf<RootModuleData extends BasicModuleData>
     = ModuleOf<RootModuleData> 
     & RootDataOf<RootModuleData> 
     & { state: StateOf<RootModuleData> };
+
+export type Store<Getters extends GetterTree, C, D, Modules extends ModuleTree> = Module<Getters, C, D, Modules>;
+export type BasicStore =  Store<any, any, any, any>;

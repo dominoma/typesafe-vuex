@@ -1,5 +1,7 @@
-import { BasicModuleData, StoreOf } from "./module";
-import { IntersectionOf } from "./types";
+import { BasicModuleData, StoreOf, BasicStore } from "./module";
+import { IntersectionOf, DeepReadonly, BasicMap } from "./types";
+import { GetterTree, BasicGetter } from "./getter";
+import { BasicCommit } from "./mutation";
 /**
  * Action type used to declare a Module action
  * @param P payload type of action
@@ -43,6 +45,11 @@ export  type RootActionHandler<C extends BasicActionContext, P, R>
         ? (context : C) => Promise<R>
         : (context : C, payload : P) => Promise<R>
     };
+export type BasicActionHandler = ((context : any, payload : any) => Promise<any>) | {
+    root: true,
+    handler: (context : any, payload : any) => Promise<any>
+}
+type BasicActionHandlerTree = BasicMap<BasicActionHandler>;
 /**
  * Type of context passed in action definitions
  * @param State state type of module
@@ -53,7 +60,7 @@ export  type RootActionHandler<C extends BasicActionContext, P, R>
  */
 export type ActionContext<State, C, D, GTree, RMD extends BasicModuleData = never> 
 = [RMD] extends [never] ? {
-    state : Readonly<State>;
+    state : DeepReadonly<State>;
     commit: C;
     dispatch: D;
     getters: Readonly<GTree>;
@@ -64,7 +71,18 @@ export type ActionContext<State, C, D, GTree, RMD extends BasicModuleData = neve
     getters: Readonly<GTree>;
     root: StoreOf<RMD>;
 };
-type BasicActionContext = ActionContext<any, any, any, any>;
+type BasicActionContext = {
+    state : any;
+    commit: any;
+    dispatch: any;
+    getters: any;
+    root: any;
+} | {
+    state : any;
+    commit: any;
+    dispatch: any;
+    getters: any;
+};
 
 /**
  * Returns the action definition type of an action declaration
@@ -91,6 +109,7 @@ export type Dispatch<Name extends string | number | symbol, P, R>
     = unknown extends P
         ? ((name : Name) => Promise<R>) & ((args : { type : Name })=>R)
         : ((name : Name, payload : P) => Promise<R>) & ((args : { type : Name } & P)=>R);
+type BasicDispatch = (name : string, payload: unknown) => Promise<unknown>;
 export type DispatchOf<ATree extends ActionTree> = IntersectionOf<{
     [name in keyof ATree]: ATree[name] extends ModuleAction<infer P, infer R> 
         ? Dispatch<name, P, R>

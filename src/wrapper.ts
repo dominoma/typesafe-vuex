@@ -1,71 +1,111 @@
-import { BasicModuleData } from "./module";
+import { BasicModuleData, BasicStore, BasicModule, StoreOf } from "./module";
 import { BasicMap } from "./types";
-import { Store, Commit, Dispatch, Module, ActionTree, GetterTree, ModuleTree } from "vuex";
+import * as Vuex from "vuex";
 
-function convertToVuexData(data : BasicModuleData, root: any) : Module<any, any> {
-    let modules : ModuleTree<any> = {};
-    for(let key in data.modules) {
-        modules[key] = convertToVuexData(data.modules[key], root);
-    }
-    let actions : ActionTree<any, any> = {};
-    for(let key in data.actions) {
-        actions[key] = (context, payload)=>{
-            (data.actions[key] as any)({
-                commit: context.commit,
-                dispatch: context.dispatch,
-                getters: context.getters,
-                state: context.state,
-                root: root
-            }, payload);
-        };
-    }
-    let getters : GetterTree<any, any> = {};
-    for(let key in data.getters) {
-        getters[key] = (state, getters) => {
-            (data.getters[key] as any)(state, getters, root);
+function mapObject<V, N>(obj : { [key:string]: V }, map : (v : V, k : string) => N) {
+    return Object.keys(obj).reduce((acc, el) => {
+        acc[el] = map(obj[el], el);
+        return acc;
+    }, {} as { [key:string]: N });
+};
+
+function toVuexModuleData(data : BasicModuleData, root: BasicStore) : Vuex.Module<any, any> {
+    let modules : Vuex.ModuleTree<unknown> = mapObject(data.modules, (el)=>{
+        return toVuexModuleData(el, root);
+    });
+    let actions : Vuex.ActionTree<unknown, unknown> = mapObject(data.actions, (el) => {
+        if("root" in el) {
+            return { 
+                root: el.root,
+                handler: (context, payload) => {
+                    return el.handler({
+                        state: context.state,
+                        commit: context.commit,
+                        dispatch: context.dispatch,
+                        getters: context.getters,
+                        root
+                    }, payload);
+                }
+            }
         }
-    }
+        else {
+            return (context, payload) => {
+                return el({
+                    state: context.state,
+                    commit: context.commit,
+                    dispatch: context.dispatch,
+                    getters: context.getters,
+                    root
+                }, payload);
+            }
+        }
+    });
+    let getters : Vuex.GetterTree<unknown, unknown> = mapObject(data.getters, (el)=>{
+        return (state, getters) => {
+            return el(state, getters, root);
+        };
+    });
+    let mutations : Vuex.MutationTree<unknown> = data.mutations;
     return {
-        state: data.state,
         namespaced: data.namespaced,
-        mutations: data.mutations,
+        state: data.state,
+        mutations,
         actions,
         getters,
         modules
     }
 }
+function toVuexStoreData(data : BasicModuleData, root: BasicStore) : Vuex.StoreOptions<unknown> {
+    let md = toVuexModuleData(data, root);
+    return { ...md, strict: true };
+}
 
-function createWrappedModuleTree(commit_ : Commit, dispatch_ : Dispatch, getters_ : any, data : BasicModuleData, path : string) {
-    let wrappedGetters = {};
+function toTypesafeModule(store : Vuex.Store<unknown>, data : BasicModuleData, path : string) : BasicModule {
+    let modules = mapObject(data.modules, (el, key)=>{
+        return toTypesafeModule(store, el, path+key+"/");
+    });
+    let commit : Vuex.Commit = (nameOrPayload : any, payloadOrOptions : any, options ?: any) => {
+        if("type" in nameOrPayload) {
+            store.commit({
+                ...nameOrPayload,
+                type: path+nameOrPayload.type,
+            }, payloadOrOptions);
+        }
+        else {
+            store.commit(path+nameOrPayload, payloadOrOptions, options)
+        }
+    }
+    let dispatch : Vuex.Dispatch = (nameOrPayload : any, payloadOrOptions : any, options ?: any) => {
+        if("type" in nameOrPayload) {
+            return store.dispatch({
+                ...nameOrPayload,
+                type: path+nameOrPayload.type,
+            }, payloadOrOptions);
+        }
+        else {
+            return store.dispatch(path+nameOrPayload, payloadOrOptions, options)
+        }
+    }
+    let getters = {};
     for(let key in data.getters) {
-        wrappedGetters = { 
-            ...wrappedGetters,
+        getters = {
+            ...getters,
             get [key]() {
-                return getters_[path+key];
+                return store.getters[path+key];
             }
         }
     }
-    let wrappedModules : BasicMap = {};
-    for(let key in data.modules) {
-        wrappedModules[key] = createWrappedModuleTree(commit_, dispatch_, getters_, data.modules[key], path+key+"/");
-    }
     return {
-        commit(name : string, payload : any) {
-            commit_(path+name, payload);
-        },
-        dispatch(name : string, payload : any) {
-            return dispatch_(path+name, payload);
-        },
-        getters: wrappedGetters,
-        ...wrappedModules
+        commit,
+        dispatch,
+        getters,
+        ...modules
     }
 }
-
-export function wrapStore(data : BasicModuleData) {
-    let root = {};
-    let store = new Store(convertToVuexData(data, root));
-    Object.assign(root,
-        createWrappedModuleTree(store.commit, store.dispatch, store.getters, data, ""),
-        { state: store.state });
-    return root;
+function toTypesafeStore<T extends BasicModuleData> (storeData : T) {
+    let store = {} as BasicStore;
+    let vuexData = toVuexStoreData(storeData, store);
+    let vuexStore = new Vuex.Store(vuexData);
+    Object.assign(store, toTypesafeModule(vuexStore, storeData, ""));
+    return store as StoreOf<T>;
 }

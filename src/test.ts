@@ -1,4 +1,5 @@
 import { ModuleData, StoreOf } from "./module";
+import { DeepReadonly } from "./types"
 type PlaylistState = {
     test: boolean,
     soo: string
@@ -114,3 +115,8 @@ let x : PlaylistModule = {
 }
 
 let z = {} as StoreOf<typeof x>;
+let t = {} as DeepReadonly<{ x: number, t: boolean, z: string, v: { g: string }, b: Error }>;
+type ttt = (test: any, x: any)=>void;
+type bbb = ((test: "ww", x: number)=>void) & ((test: "ss", x: string)=>void);
+let r : bbb;
+type rrr = bbb extends ttt ? true : false;

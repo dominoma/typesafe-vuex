@@ -1,9 +1,9 @@
-import { IntersectionOf } from "./types";
+import { IntersectionOf, BasicMap } from "./types";
 /**
  * Mutation type used to declare a Module mutation
  * @param P type of mutation payload
  */
-export type Mutation<P> = ((payload : P)=>void )| (() => void);
+export type Mutation<P> = ((payload : P)=>void ) | (() => void);
 type BasicMutation = Mutation<any>;
 /**
  * Declaration type for Module mutations
@@ -20,6 +20,7 @@ export type MutationHandler<S, P>
     = unknown extends P
         ? (state : S) => void
         : (state : S, payload : P) => void;
+type BasicMutationHandler = (state : any, payload : any)=>void;
 
 type MutationHandlerOf<T extends BasicMutation, State>
     = T extends Mutation<infer P>
@@ -29,6 +30,7 @@ type MutationHandlerOf<T extends BasicMutation, State>
 type MutationHandlerTreeOf<T extends MutationTree, State> = {
     [key in keyof T]: MutationHandlerOf<T[key], State>;
 }
+type BasicMutationHandlerTree = BasicMap<BasicMutationHandler>;
 
 type MutationPayload<T extends BasicMutation> 
     = T extends Mutation<infer P> ? P : never;
@@ -39,3 +41,4 @@ type Commit<Name extends string | number | symbol, P>
 type CommitOf<MTree extends MutationTree> = IntersectionOf<{
     [name in keyof MTree]: Commit<name, MutationPayload<MTree[name]>>
 }>;
+type BasicCommit = ((name : string, payload : unknown)=>void);
