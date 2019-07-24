@@ -1,6 +1,6 @@
-import { MutationTree, MutationHandlerTreeOf, CommitOf, BasicMutationHandlerTree } from "./mutation";
-import { ActionTree, ActionHandlerTreeOf, ActionContext, RootDispatchOf, DispatchOf, BasicActionHandlerTree } from "./action";
-import { GetterTree, GetterHandlerTreeOf, BasicGetterHandlerTree } from "./getter";
+import { MutationTree, MutationHandlerTreeOf, CommitOf, DefaultMutationHandlerTree } from "./mutation";
+import { ActionTree, ActionHandlerTreeOf, ActionContext, RootDispatchOf, DispatchOf, BasicActionHandlerTree, DefaultActionHandlerTree } from "./action";
+import { GetterTree, GetterHandlerTreeOf, DefaultGetterHandlerTree } from "./getter";
 import { IntersectionOf, BasicMap } from "./types";
 
 export type ModuleData<
@@ -28,17 +28,20 @@ export type ModuleData<
     getters: GetterHandlerTreeOf<GTree, State, RootModuleData>;
     modules: SubModuleTree;
 }
-export type BasicModuleData = {
+export type BasicModuleData = ModuleData<any, any, any, any, any, any, any>;
+type DefaultModuleData = {
     namespaced: boolean;
-    state: any;
-    actions: BasicActionHandlerTree;
-    mutations: BasicMutationHandlerTree;
-    getters: BasicGetterHandlerTree;
-    modules: ModuleDataTree;
-};
+    state: unknown;
+    actions: DefaultActionHandlerTree;
+    mutations: DefaultMutationHandlerTree;
+    getters: DefaultGetterHandlerTree;
+    modules: DefaultModuleDataTree;
+}
 type ModuleDataTree = {
     [key:string]: BasicModuleData;
 };
+type DefaultModuleDataTree = BasicMap<DefaultModuleData>;
+
 export type Reserved<B, T extends B, K extends string> 
     = Omit<T, K> extends T ? B : never;
 type ModuleReservedKeys = "commit" | "dispatch" | "getters" | "state";
@@ -50,6 +53,11 @@ export type Module<Getters extends GetterTree, C, D, Modules extends ModuleTree>
     readonly dispatch: D;
 } & Readonly<Modules>;
 type BasicModule = Module<any,any,any,any> | ModuleTree;
+type DefaultModule = {
+    getters: unknown;
+    commit: unknown;
+    dispatch: unknown;
+} & BasicMap<unknown>;
 type ModuleTree = {
     [key:string]: BasicModule;
 }
@@ -105,3 +113,4 @@ export type StoreOf<RootModuleData extends BasicModuleData>
 
 export type Store<Getters extends GetterTree, C, D, Modules extends ModuleTree> = Module<Getters, C, D, Modules>;
 export type BasicStore =  Store<any, any, any, any>;
+type DefaultStore = DefaultModule;

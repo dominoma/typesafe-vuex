@@ -1,5 +1,4 @@
-import { BasicModuleData, BasicStore, BasicModule, StoreOf } from "./module";
-import { BasicMap } from "./types";
+import { BasicModuleData, BasicStore, BasicModule, StoreOf, DefaultModuleData, DefaultStore } from "./module";
 import * as Vuex from "vuex";
 
 function mapObject<V, N>(obj : { [key:string]: V }, map : (v : V, k : string) => N) {
@@ -9,7 +8,7 @@ function mapObject<V, N>(obj : { [key:string]: V }, map : (v : V, k : string) =>
     }, {} as { [key:string]: N });
 };
 
-function toVuexModuleData(data : BasicModuleData, root: BasicStore) : Vuex.Module<any, any> {
+function toVuexModuleData(data : DefaultModuleData, root: DefaultStore) : Vuex.Module<any, any> {
     let modules : Vuex.ModuleTree<unknown> = mapObject(data.modules, (el)=>{
         return toVuexModuleData(el, root);
     });
@@ -55,12 +54,12 @@ function toVuexModuleData(data : BasicModuleData, root: BasicStore) : Vuex.Modul
         modules
     }
 }
-function toVuexStoreData(data : BasicModuleData, root: BasicStore) : Vuex.StoreOptions<unknown> {
+function toVuexStoreData(data : DefaultModuleData, root: DefaultStore) : Vuex.StoreOptions<unknown> {
     let md = toVuexModuleData(data, root);
     return { ...md, strict: true };
 }
 
-function toTypesafeModule(store : Vuex.Store<unknown>, data : BasicModuleData, path : string) : BasicModule {
+function toTypesafeModule(store : Vuex.Store<unknown>, data : DefaultModuleData, path : string) : BasicModule {
     let modules = mapObject(data.modules, (el, key)=>{
         return toTypesafeModule(store, el, path+key+"/");
     });
@@ -102,10 +101,10 @@ function toTypesafeModule(store : Vuex.Store<unknown>, data : BasicModuleData, p
         ...modules
     }
 }
-function toTypesafeStore<T extends BasicModuleData> (storeData : T) {
+export function toTypesafeStore<T extends BasicModuleData> (storeData : T) {
     let store = {} as BasicStore;
-    let vuexData = toVuexStoreData(storeData, store);
+    let vuexData = toVuexStoreData(storeData as unknown as DefaultModuleData, store);
     let vuexStore = new Vuex.Store(vuexData);
-    Object.assign(store, toTypesafeModule(vuexStore, storeData, ""));
+    Object.assign(store, toTypesafeModule(vuexStore, storeData as unknown as DefaultModuleData, ""));
     return store as StoreOf<T>;
 }

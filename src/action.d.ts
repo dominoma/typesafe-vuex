@@ -1,7 +1,7 @@
-import { BasicModuleData, StoreOf, BasicStore } from "./module";
+import { BasicModuleData, StoreOf, BasicStore, DefaultStore } from "./module";
 import { IntersectionOf, DeepReadonly, BasicMap } from "./types";
 import { GetterTree, BasicGetter } from "./getter";
-import { BasicCommit } from "./mutation";
+import { DefaultCommit } from "./mutation";
 /**
  * Action type used to declare a Module action
  * @param P payload type of action
@@ -15,7 +15,7 @@ export type ModuleAction<P, R> = ((payload : P) => Promise<R>) | (() => Promise<
  */
 export type RootAction<P, R> = {
     root: true;
-    handler: ((payload : P) => Promise<R>) | (() => Promise<R>)
+    handler: ModuleAction<P, R>
 }
 /**
  * Action type used to declare an action
@@ -41,15 +41,15 @@ export type ModuleActionHandler<C extends BasicActionContext, P, R>
         ? (context : C) => Promise<R>
         : (context : C, payload : P) => Promise<R>;
 export  type RootActionHandler<C extends BasicActionContext, P, R> 
-    = { root: true, handler: unknown extends P
-        ? (context : C) => Promise<R>
-        : (context : C, payload : P) => Promise<R>
-    };
-export type BasicActionHandler = ((context : any, payload : any) => Promise<any>) | {
-    root: true,
-    handler: (context : any, payload : any) => Promise<any>
-}
+    = { root: true, handler: ModuleActionHandler<C, P, R> };
+export type ActionHandler<C extends BasicActionContext, P, R> = ModuleActionHandler<C,P,R> | RootActionHandler<C, P, R>;
+export type BasicActionHandler = ActionHandler<any, any, any>;
 type BasicActionHandlerTree = BasicMap<BasicActionHandler>;
+
+type DefaultModuleActionHandler = (context : DefaultActionContext, payload : unknown) => Promise<unknown>;
+type DefaultRootActionHandler = { root: true, handler: DefaultModuleActionHandler };
+type DefaultActionHandler = DefaultModuleActionHandler | DefaultRootActionHandler;
+type DefaultActionHandlerTree = BasicMap<DefaultActionHandler>;
 /**
  * Type of context passed in action definitions
  * @param State state type of module
@@ -58,7 +58,7 @@ type BasicActionHandlerTree = BasicMap<BasicActionHandler>;
  * @param GTree type of module getters
  * @param RMD type of root module definition
  */
-export type ActionContext<State, C, D, GTree, RMD extends BasicModuleData = never> 
+export type ActionContext<State, C, D, GTree, RMD extends BasicModuleData> 
 = [RMD] extends [never] ? {
     state : DeepReadonly<State>;
     commit: C;
@@ -71,19 +71,8 @@ export type ActionContext<State, C, D, GTree, RMD extends BasicModuleData = neve
     getters: Readonly<GTree>;
     root: StoreOf<RMD>;
 };
-type BasicActionContext = {
-    state : any;
-    commit: any;
-    dispatch: any;
-    getters: any;
-    root: any;
-} | {
-    state : any;
-    commit: any;
-    dispatch: any;
-    getters: any;
-};
-
+type BasicActionContext = ActionContext<any, any, any, any, any> | ActionContext<any, any, any, any, never>;
+type DefaultActionContext = { state: unknown, commit: DefaultCommit, dispatch: DefaultDispatch, getters: unknown, root: DefaultStore };
 /**
  * Returns the action definition type of an action declaration
  * @param T the action declaration
@@ -109,7 +98,10 @@ export type Dispatch<Name extends string | number | symbol, P, R>
     = unknown extends P
         ? ((name : Name) => Promise<R>) & ((args : { type : Name })=>R)
         : ((name : Name, payload : P) => Promise<R>) & ((args : { type : Name } & P)=>R);
-type BasicDispatch = (name : string, payload: unknown) => Promise<unknown>;
+type DefaultDispatch = {
+    (name : string, payload : unknown):Promise<unknown>;
+    (args : { type : string } & unknown):Promise<unknown>;
+}
 export type DispatchOf<ATree extends ActionTree> = IntersectionOf<{
     [name in keyof ATree]: ATree[name] extends ModuleAction<infer P, infer R> 
         ? Dispatch<name, P, R>
@@ -120,3 +112,6 @@ export type RootDispatchOf<ATree extends ActionTree> = IntersectionOf<{
         ? Dispatch<name, P, R>
         : unknown;
 }>;
+export declare interface Vue {
+    test: string;
+}
