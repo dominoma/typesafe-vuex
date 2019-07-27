@@ -1,5 +1,5 @@
 {
-  "name": "typesafe-vuex",
+  "name": "vuex-typesafe",
   "version": "1.0.0",
   "description": "A projekt making vuex typescript-ready",
   "main": "dist/index.ts",

@@ -58,7 +58,7 @@ type DefaultModule = {
     commit: unknown;
     dispatch: unknown;
 } & BasicMap<unknown>;
-type ModuleTree = {
+export type ModuleTree = {
     [key:string]: BasicModule;
 }
 export type ModuleOf<T extends BasicModuleData> 
