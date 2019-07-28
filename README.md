@@ -59,6 +59,7 @@ If your getter handlers or action handlers depend on the store's root, you can d
 type MyModuleData = ModuleData<MyState, MyMutations, MyGetters, MyActions, MySubModules, false /*or true*/, MyStoreData>;
 ```
 Notice: `MyStoreData` is the store data type which is created exactly like a module data type.
+
 Now that you have created the module data type, you can program the module.
 ```typescript
 const myModuleData : MyModuleData = {
@@ -150,11 +151,13 @@ class MyModule extends ClassModule<"myModule", true, [MySubModule, MySubModule2]
 }
 ```
 Notice: Your helper methods must be declared private, everything else must be public and actions and mutations must have their respective decorators.
+
 Also keep in mind, that there are access restrictions for your methods
 * Getter Methods can only access other getters, fields, the root object and those private methods accessing only these
 * Mutation methods can only access fields and those private methods accessing only these
-* Action methods can access all methods, fields, the root object and privaate methods
+* Action methods can access all methods, fields, the root object and private methods
 * Private methods can access all methods, fields and the root object
+
 Violating these access restrictions will result in an Exception at runtime!
 
 ## Store
@@ -170,7 +173,7 @@ new Vue({
 The typesafe store works exactly like the vuex store with one exception.
 To access operations of namespaced modules you have to do this
 ```typescript
-this.$store.myNamespacedModule.commit('myOperation', myPayload);
+this.$store.myNamespacedModule.commit('myOperation', myPayload); //typesafe (won't compile with wrong string or payload)
 ```
 instead of this
 ```javascript
