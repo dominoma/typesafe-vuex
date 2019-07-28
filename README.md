@@ -1,4 +1,4 @@
-# typesafe-vuex
+# vuex-typesafe
 
 This is a simple way to make Vuex typescript-ready. To type your store/module, you have to declare actions, mutations and getters like this:
 
