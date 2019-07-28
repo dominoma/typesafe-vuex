@@ -2,7 +2,7 @@
 
 This is a simple way to make Vuex typescript-ready. To type your store/module, you have to declare actions, mutations and getters like this:
 
-##Actions
+## Actions
 
 ```typescript
 type MyActions = {
@@ -15,7 +15,7 @@ type MyActions = {
 }
 ```
 
-##Mutations
+## Mutations
 
 ```typescript
 type MyMutations = {
@@ -24,7 +24,7 @@ type MyMutations = {
 }
 ```
 
-##Getters
+## Getters
 
 ```typescript
 type MyGetters = {
@@ -33,7 +33,7 @@ type MyGetters = {
 }
 ```
 
-##SubModules
+## SubModules
 
 If your store / module has submodules you can type it this way:
 ```typescript
@@ -44,7 +44,7 @@ type MySubModules = {
 ```
 Notice: `MySubModuleData1` and `MySubModuleData2` are example module data types created with the following method.
 
-##ModuleData
+## ModuleData
 
 To create the module data type do this:
 ```typescript
@@ -103,7 +103,7 @@ const myModuleData : MyModuleData = {
 }
 ```
 
-##Class-Based Modules
+## Class-Based Modules
 
 You can write class-based modules like this
 ```typescript
@@ -157,7 +157,7 @@ Also keep in mind, that there are access restrictions for your methods
 * Private methods can access all methods, fields and the root object
 Violating these access restrictions will result in an Exception at runtime!
 
-##Store
+## Store
 
 To create and use the store with typesafety you have to do the following:
 ```typescript
