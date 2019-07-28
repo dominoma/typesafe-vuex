@@ -16,20 +16,20 @@ export type MutationTree = {
  * @param S type of module state
  * @param P type of mutation payload
  */
-export type MutationHandler<S, P> 
+type MutationHandler<S, P> 
     = unknown extends P
         ? (state : S) => void
         : (state : S, payload : P) => void;
 
-type DefaultMutationHandler = (state: unknown, payload : unknown) => void;
-type DefaultMutationHandlerTree = BasicMap<DefaultMutationHandler>;
+type DefaultMutationHandler = (state: BasicMap, payload : unknown) => void;
+export type DefaultMutationHandlerTree = BasicMap<DefaultMutationHandler>;
 
 type MutationHandlerOf<T extends BasicMutation, State>
     = T extends Mutation<infer P>
         ? MutationHandler<State, P>
         : never;
 
-type MutationHandlerTreeOf<T extends MutationTree, State> = {
+export type MutationHandlerTreeOf<T extends MutationTree, State> = {
     [key in keyof T]: MutationHandlerOf<T[key], State>;
 }
 
@@ -41,11 +41,11 @@ type Commit<Name extends string | number | symbol, P>
         ? ((name : Name)=>void) & ((args : { type : Name })=>void)
         : ((name : Name, payload : P)=>void) & ((args : { type : Name } & P)=>void);
 
-type DefaultCommit = {
+export type DefaultCommit = {
     (name : string, payload : unknown):void;
     (args : { type : string } & unknown):void;
 }
 
-type CommitOf<MTree extends MutationTree> = IntersectionOf<{
+export type CommitOf<MTree extends MutationTree> = IntersectionOf<{
     [name in keyof MTree]: Commit<name, MutationPayload<MTree[name]>>
 }>;

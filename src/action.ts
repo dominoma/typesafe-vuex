@@ -1,6 +1,5 @@
-import { BasicModuleData, StoreOf, BasicStore, DefaultStore } from "./module";
+import { BasicModuleData, StoreOf, DefaultStore } from "./module";
 import { IntersectionOf, DeepReadonly, BasicMap } from "./types";
-import { GetterTree, BasicGetter } from "./getter";
 import { DefaultCommit } from "./mutation";
 /**
  * Action type used to declare a Module action
@@ -13,7 +12,7 @@ export type ModuleAction<P, R> = ((payload : P) => Promise<R>) | (() => Promise<
  * @param P payload type of action
  * @param R return type of action
  */
-export type RootAction<P, R> = {
+type RootAction<P, R> = {
     root: true;
     handler: ModuleAction<P, R>
 }
@@ -22,7 +21,7 @@ export type RootAction<P, R> = {
  * @param P payload type of action
  * @param R return type of action
  */
-export type Action<P, R> = RootAction<P, R> | ModuleAction<P, R>;
+type Action<P, R> = RootAction<P, R> | ModuleAction<P, R>;
 type BasicAction = Action<any, any>;
 /**
  * Declaration type for Module actions
@@ -36,20 +35,20 @@ export type ActionTree = {
  * @param P type of action payload
  * @param R return type
  */
-export type ModuleActionHandler<C extends BasicActionContext, P, R> 
+ type ModuleActionHandler<C extends BasicActionContext, P, R> 
     = unknown extends P
         ? (context : C) => Promise<R>
         : (context : C, payload : P) => Promise<R>;
-export  type RootActionHandler<C extends BasicActionContext, P, R> 
+type RootActionHandler<C extends BasicActionContext, P, R> 
     = { root: true, handler: ModuleActionHandler<C, P, R> };
-export type ActionHandler<C extends BasicActionContext, P, R> = ModuleActionHandler<C,P,R> | RootActionHandler<C, P, R>;
-export type BasicActionHandler = ActionHandler<any, any, any>;
+type ActionHandler<C extends BasicActionContext, P, R> = ModuleActionHandler<C,P,R> | RootActionHandler<C, P, R>;
+type BasicActionHandler = ActionHandler<any, any, any>;
 type BasicActionHandlerTree = BasicMap<BasicActionHandler>;
 
 type DefaultModuleActionHandler = (context : DefaultActionContext, payload : unknown) => Promise<unknown>;
 type DefaultRootActionHandler = { root: true, handler: DefaultModuleActionHandler };
 type DefaultActionHandler = DefaultModuleActionHandler | DefaultRootActionHandler;
-type DefaultActionHandlerTree = BasicMap<DefaultActionHandler>;
+export type DefaultActionHandlerTree = BasicMap<DefaultActionHandler>;
 /**
  * Type of context passed in action definitions
  * @param State state type of module
@@ -72,7 +71,7 @@ export type ActionContext<State, C, D, GTree, RMD extends BasicModuleData>
     root: StoreOf<RMD>;
 };
 type BasicActionContext = ActionContext<any, any, any, any, any> | ActionContext<any, any, any, any, never>;
-type DefaultActionContext = { state: unknown, commit: DefaultCommit, dispatch: DefaultDispatch, getters: unknown, root: DefaultStore };
+type DefaultActionContext = { state: BasicMap, commit: DefaultCommit, dispatch: DefaultDispatch, getters: BasicMap, root: DefaultStore };
 /**
  * Returns the action definition type of an action declaration
  * @param T the action declaration
@@ -90,11 +89,11 @@ type ActionHandlerOf<T extends BasicAction, Context extends BasicActionContext>
  * @param T the actions declaration
  * @param Context the type of the context to pass to the action definition functions
  */
-type ActionHandlerTreeOf<T extends ActionTree, Context extends BasicActionContext> = {
+export type ActionHandlerTreeOf<T extends ActionTree, Context extends BasicActionContext> = {
     [key in keyof T]: ActionHandlerOf<T[key], Context>;
 }
 
-export type Dispatch<Name extends string | number | symbol, P, R> 
+type Dispatch<Name extends string | number | symbol, P, R> 
     = unknown extends P
         ? ((name : Name) => Promise<R>) & ((args : { type : Name })=>R)
         : ((name : Name, payload : P) => Promise<R>) & ((args : { type : Name } & P)=>R);
@@ -112,6 +111,3 @@ export type RootDispatchOf<ATree extends ActionTree> = IntersectionOf<{
         ? Dispatch<name, P, R>
         : unknown;
 }>;
-export declare interface Vue {
-    test: string;
-}

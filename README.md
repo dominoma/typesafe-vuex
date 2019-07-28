@@ -1,6 +1,9 @@
 # typesafe-vuex
+
 This is a simple way to make Vuex typescript-ready. To type your store/module, you have to declare actions, mutations and getters like this:
+
 ##Actions
+
 ```typescript
 type MyActions = {
     myAction1(): Promise<string>,
@@ -11,21 +14,27 @@ type MyActions = {
     }
 }
 ```
+
 ##Mutations
+
 ```typescript
 type MyMutations = {
     myMutation1(): void,
     myMutation2(payload : MyOtherPayloadObject): void
 }
 ```
+
 ##Getters
+
 ```typescript
 type MyGetters = {
     myGetter1: number,
     myGetter2: (myarg: string) => string
 }
 ```
+
 ##SubModules
+
 If your store / module has submodules you can type it this way:
 ```typescript
 type MySubModules = {
@@ -34,7 +43,9 @@ type MySubModules = {
 }
 ```
 Notice: `MySubModuleData1` and `MySubModuleData2` are example module data types created with the following method.
+
 ##ModuleData
+
 To create the module data type do this:
 ```typescript
 type MyModuleData = ModuleData<MyState, MyMutations, MyGetters, MyActions, MySubModules>;
@@ -91,12 +102,78 @@ const myModuleData : MyModuleData = {
     }
 }
 ```
+
+##Class-Based Modules
+
+You can write class-based modules like this
+```typescript
+import { ClassModule, Module, Action, Mutation } from 'vuex-typesafe';
+@Module({
+    name: "myModule",
+    namespaced: true,
+    modules: [MySubModule, MySubModule2]
+})
+class MyModule extends ClassModule<"myModule", true, [MySubModule, MySubModule2], MyRootModule> {
+
+    //State
+    myField = 0
+    myOtherField = "hello"
+
+    //Actions
+    @Action
+    async myAction() {
+        return this.myField;
+    }
+
+    @Action
+    async myAction2(payload : number) {
+        this.root.commit("myRootMutation", payload);
+        this.myMutation(payload);
+    }
+
+    //Mutations
+    @Mutation
+    myMutation(payload : number) {
+        this.myField += number;
+    }
+
+    //Getters
+
+    get myGetter() {
+        return this.myOtherField
+    }
+
+    private myHelperMethod() {
+        //Do something
+    }
+
+}
+```
+Notice: Your helper methods must be declared private, everything else must be public and actions and mutations must have their respective decorators.
+Also keep in mind, that there are access restrictions for your methods
+* Getter Methods can only access other getters, fields, the root object and those private methods accessing only these
+* Mutation methods can only access fields and those private methods accessing only these
+* Action methods can access all methods, fields, the root object and privaate methods
+* Private methods can access all methods, fields and the root object
+Violating these access restrictions will result in an Exception at runtime!
+
 ##Store
+
 To create and use the store with typesafety you have to do the following:
 ```typescript
-import toTypesafeStore from 'typesafe-vuex';
+import { toTypesafeStore } from 'vuex-typesafe';
 const store = toTypesafeStore(myModuleData);
 new Vue({
     store
 })
 ```
+The typesafe store works exactly like the vuex store with one exception.
+To access operations of namespaced modules you have to do this
+```typescript
+this.$store.myNamespacedModule.commit('myOperation', myPayload);
+```
+instead of this
+```javascript
+this.$store.commit('myNamespacedModule/myOperation', myPayload);
+```
+The same holds for accessing getters and actions of namespaced modules.

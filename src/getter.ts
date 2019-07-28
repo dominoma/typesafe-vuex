@@ -1,10 +1,10 @@
-import { BasicModuleData, ModuleData, ModuleDataTree, StateOf, DefaultStore } from "./module";
+import { BasicModuleData, ModuleData, ModuleDataTree, StateOf, DefaultStore, DefaultModule } from "./module";
 import { BasicMap } from "./types";
 /**
  * Getter type used to declare a Module getter
  * @param R return type of getter
  */
-export type Getter<R> = R;
+type Getter<R> = R;
 type BasicGetter = Getter<any>;
 /**
  * Declaration type for Module getters
@@ -24,15 +24,15 @@ type GetterHandler<S, T extends GetterTree, R, RMD extends BasicModuleData>
         ? (state : S, getters : T)=>R
         : (state : S, getters : T, root: GetterHandlerRootOf<RMD>)=>R;
 
-type DefaultGetterHandler = (state : unknown, getters : unknown, root: DefaultStore)=>unknown;
-type DefaultGetterHandlerTree = BasicMap<DefaultGetterHandler>;
+type DefaultGetterHandler = (state : BasicMap, getters : BasicMap, root: DefaultModule)=>unknown;
+export type DefaultGetterHandlerTree = BasicMap<DefaultGetterHandler>;
 
 type GetterHandlerOf<T extends BasicGetter, State, GTree extends GetterTree, RMD extends BasicModuleData>
     = T extends Getter<infer R>
         ? GetterHandler<State, GTree, R, RMD>
         : never;
 
-type GetterHandlerTreeOf<T extends GetterTree, State, RMD extends BasicModuleData> = {
+export type GetterHandlerTreeOf<T extends GetterTree, State, RMD extends BasicModuleData> = {
     [key in keyof T]: GetterHandlerOf<T[key], State, T, RMD>;
 }
 

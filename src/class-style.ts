@@ -1,8 +1,10 @@
 import { IntersectionOf, BasicMap } from "./types";
 import * as Vuex from "vuex";
-import { ModuleData, ModuleDataTree, ModuleOf, BasicModuleData } from "./module";
-import { MutationTree, BasicMutation, Mutation, CommitOf } from "./mutation";
-import { ActionTree, BasicAction, Action, DispatchOf, ModuleAction } from "./action";
+import { ModuleData, BasicModuleData, DefaultStore, DefaultModule, DefaultModuleData, StoreOf } from "./module";
+import { Mutation, DefaultMutationHandlerTree } from "./mutation";
+import { ModuleAction, DefaultActionHandlerTree } from "./action";
+import * as Wrapper from"./wrapper";
+import { DefaultGetterHandlerTree } from "./getter";
 
 
 type IfEquals<X, Y, A=X, B=never> =
@@ -30,55 +32,71 @@ type AsyncFunctionKeys<T> = {
 type NonAsyncFunctionKeys<T> = {
     [P in keyof T]: T[P] extends (...args: any[])=>Promise<any> ? never : P
 }[keyof T];
-
-type GettersOf<T extends BasicModule> = Pick<T, ReadonlyKeys<T> >;
-type StateOf<T extends BasicModule> = Pick<T, NonFunctionKeys<T> & WritableKeys<T> >;
-type ActionKeys<T extends BasicModule> = WritableKeys<T> & AsyncFunctionKeys<T> & (string | number | symbol);
-type ActionsOf<T extends BasicModule> = {
-    [key in ActionKeys<T>]: T[key] extends Action<infer P, infer R> 
+type ExcludeRoot<keys extends string | number | symbol> = Exclude<keys, "root">;
+type GetterKeys<T extends BasicClassModule> = ExcludeRoot<ReadonlyKeys<T>>;
+type GettersOf<T extends BasicClassModule> = Pick<T, GetterKeys<T> >;
+type StateKeys<T extends BasicClassModule> = ExcludeRoot<NonFunctionKeys<T> & WritableKeys<T> & (string | number | symbol)>;
+type StateOf<T extends BasicClassModule> = Pick<T, StateKeys<T> >;
+type ActionKeys<T extends BasicClassModule> = ExcludeRoot<WritableKeys<T> & AsyncFunctionKeys<T> & (string | number | symbol)>;
+type ActionsOf<T extends BasicClassModule> = {
+    [key in ActionKeys<T>]: T[key] extends ModuleAction<infer P, infer R> 
         ? ModuleAction<P, R>
         : never;
 };
-type MutationKeys<T extends BasicModule> = WritableKeys<T> & FunctionKeys<T> & NonAsyncFunctionKeys<T> & (string | number | symbol);
-type MutationsOf<T extends BasicModule> = {
+type MutationKeys<T extends BasicClassModule> = ExcludeRoot<WritableKeys<T> & FunctionKeys<T> & NonAsyncFunctionKeys<T> & (string | number | symbol)>;
+type MutationsOf<T extends BasicClassModule> = {
     [key in MutationKeys<T>]: T[key] extends Mutation<infer P> ? Mutation<P> : never;
 };
-type ModuleDataTreeOf<M extends BasicModule> = (M extends TModule<any, any, infer Ms> 
-    ? IntersectionOf<{
-        [key in keyof Ms]: key extends number 
-            ? { [name in NameOf<Ms[key]>]: ModuleDataOf<Ms[key]> }
-            : never;
-    }>
-    : never ) & ModuleDataTree;
-type ModuleDataOf<T extends BasicModule> = ModuleData<
+
+export type ModuleDataOf<T extends BasicClassModule> = ModuleData<
     StateOf<T>, 
     MutationsOf<T>, 
     GettersOf<T>, 
     ActionsOf<T>, 
-    {}, 
-    NamespacedOf<T>
+    ModuleDataTreeOf<T>, 
+    NamespacedOf<T>,
+    RootModuleDataOf<T>
 >;
 
-class TModule<Name extends string, Namespaced=false, Modules extends TModule<any, any, any>[]=[]> {
-    
+export class ClassModule<
+    Name extends string, 
+    Namespaced=false, 
+    Modules extends BasicClassModule[]=[], 
+    RootModule extends BasicClassModule=never
+> {
+    private __name__ !: Name;
+    private __namespaced__ !: Namespaced;
+    private __modules__ !: Modules;
+    root !: StoreOf<ModuleDataOf<RootModule>>;
 }
-type BasicModule = TModule<any, any, any>;
+export type BasicClassModule = ClassModule<any, any, any, any>;
 
-type NameOf<M extends BasicModule> = M extends TModule<infer Name, any, any> ? Name & (string | number | symbol) : never;
-type ModuleArrayOf<M extends BasicModule> = M extends TModule<any, any, infer MS> ? MS : never;
-type NamespacedOf<M extends BasicModule> = M extends TModule<any, infer NS, any> ? NS & boolean : never;
+type NameOf<M extends BasicClassModule> = M extends ClassModule<infer Name, any, any, any> ? Name & (string | number | symbol) : never;
+type ModuleArrayOf<M extends BasicClassModule> = M extends ClassModule<any, any, infer MS, any> ? MS : never;
+type NamespacedOf<M extends BasicClassModule> = M extends ClassModule<any, infer NS, any, any> ? NS & boolean : never;
+type RootModuleDataOf<M extends BasicClassModule> = M extends ClassModule<any, any, any, infer RMD> ? RMD : never;
 
-
+type ClassModuleTreeOf<M extends BasicClassModule> = Extract<IntersectionOf<{
+    [K in keyof ModuleArrayOf<M>]: ModuleArrayOf<M>[K] extends BasicClassModule ? { [name in NameOf<ModuleArrayOf<M>[K]>]: ModuleArrayOf<M>[K] } : unknown
+}>, BasicMap<BasicClassModule>>
+type ModuleDataTreeOfTree<MT extends BasicMap<BasicClassModule>> = {
+    [K in keyof MT]: ModuleDataOf<MT[K]>
+}
+type ModuleDataTreeOf<M extends BasicClassModule> = ModuleDataTreeOfTree<ClassModuleTreeOf<M>>;
 
 class ModuleConverter {
 
     private readonly module : any;
-    private readonly actionKeys : string[];
-    private readonly mutationKeys : string[];
-    private readonly getterKeys : string[];
-    private readonly stateKeys : string[];
+    private readonly actionKeys : PropertyKey[];
+    private readonly mutationKeys : PropertyKey[];
+    private readonly getterKeys : PropertyKey[];
+    private readonly stateKeys : PropertyKey[];
 
-    constructor(module : any) {
+    static getModuleData(module : any) {
+        return (new ModuleConverter(module)).createModuleData();
+    }
+
+    private constructor(module : any) {
         
         this.module = module;
         let keys = Object.keys(module);
@@ -92,153 +110,139 @@ class ModuleConverter {
         });
         this.stateKeys = keys.filter((key)=>{
             let desc = Object.getOwnPropertyDescriptor(module, key);
-            return typeof module[key] !== "function" && desc && !desc.get;
+            return !(module[key] instanceof Function) && desc && !desc.get;
         });
     }
 
-    private createThis(commit ?: Vuex.Commit, getters ?: BasicMap, state ?: BasicMap, dispatch ?: Vuex.Dispatch) {
-        let actions = this.actionKeys.reduce((acc, key)=>{
-            acc[key] = (payload : any) => {
-                if(!dispatch) {
-                    throw new Error("You can't call an action here!");
+    private createThis(commit ?: Vuex.Commit, getters ?: BasicMap, state ?: BasicMap, dispatch ?: Vuex.Dispatch, root ?: DefaultModule) {
+        return new Proxy({}, {
+            get: (_target, key) => {
+                if(key === "root") {
+                    if(!root) {
+                        throw new Error("You can't access the root module here!");
+                    }
+                    return root;
                 }
-                return dispatch(key, payload);
-            }
-            return acc;
-        }, {} as BasicMap);
-        let mutations = this.mutationKeys.reduce((acc, key)=>{
-            acc[key] = (payload : any) => {
-                if(!commit) {
-                    throw new Error("You can't call a mutation here!");
+                else if(this.actionKeys.indexOf(key) != -1) {
+                    if(!dispatch) {
+                        throw new Error("You can't call an action here!");
+                    }
+                    return (payload : unknown) => dispatch(key as string, payload);
                 }
-                commit(key, payload);
-            }
-            return acc;
-        }, {} as BasicMap)
-        let _getters = this.getterKeys.reduce((acc, key)=>{
-            Object.defineProperty(acc, key, {
-                get() {
+                else if(this.mutationKeys.indexOf(key) != -1) {
+                    if(!commit) {
+                        throw new Error("You can't call a mutation here!");
+                    }
+                    return (payload : unknown) => commit(key as string, payload);
+                }
+                else if(this.getterKeys.indexOf(key) != -1) {
                     if(!getters) {
                         throw new Error("You can't access getters here!");
                     }
-                    return getters[key];
+                    return getters[key as string];
                 }
-            }) 
-            return acc;
-        }, {} as BasicMap);
-        let _state = this.stateKeys.reduce((acc, key)=>{
-            Object.defineProperty(acc, key, {
-                get() {
+                else if(this.stateKeys.indexOf(key) != -1) {
                     if(!state) {
                         throw new Error("You can't access the state here!");
                     }
-                    return state[key];
-                },
-                set(value) {
+                    return state[key as string];
+                }
+                else if(this.module[key] instanceof Function) {
+                    return ()=>{
+                        let newThis = this.createThis(commit, getters, state, dispatch, root);
+                        return this.module[key].apply(newThis, arguments);
+                    }
+                }
+                throw new Error(`Property '${key as string}' doesn't exist!`);
+            },
+            set: (_target, key, value) => {
+                if(this.stateKeys.indexOf(key) != -1) {
                     if(!state) {
                         throw new Error("You can't access the state here!");
                     }
-                    state[key] = value;
+                    state[key as string] = value;
+                    return true;
                 }
-            }) 
-            return acc;
-        }, {} as BasicMap);
-        return { ...actions, ...mutations, ..._getters, ..._state };
+                return false;
+            }
+        });
     }
-    createVuexModule() : Vuex.Module<any, any> {
+    private createModuleData() : DefaultModuleData {
         let actionHandlers = this.actionKeys.reduce((acc, key)=>{
-            acc[key] = (context, payload)=>{
-                let newThis = this.createThis(context.commit, context.getters, context.state, context.dispatch);
+            acc[key as string] = (context, payload)=>{
+                let newThis = this.createThis(context.commit, context.getters, context.state, context.dispatch, context.root);
                 return this.module[key].call(newThis, payload);
             };
             return acc;
-        }, {} as Vuex.ActionTree<any, any>);
+        }, {} as DefaultActionHandlerTree);
         let mutationHandlers = this.actionKeys.reduce((acc, key)=>{
-            acc[key] = (state, payload)=>{
+            acc[key as string] = (state, payload)=>{
                 let newThis = this.createThis(undefined, undefined, state);
                 this.module[key].call(newThis, payload);
             };
             return acc;
-        }, {} as Vuex.MutationTree<any>);
+        }, {} as DefaultMutationHandlerTree);
         let getterHandlers = this.actionKeys.reduce((acc, key)=>{
-            acc[key] = (state, getters)=>{
-                let newThis = this.createThis(undefined, getters, state);
+            acc[key as string] = (state, getters, root)=>{
+                let newThis = this.createThis(undefined, getters, state, undefined, root);
                 return Object.getOwnPropertyDescriptor(this.module, key)!.get!.call(newThis);
             };
             return acc;
-        }, {} as Vuex.GetterTree<any, any>);
+        }, {} as DefaultGetterHandlerTree);
         let state = this.stateKeys.reduce((acc, key)=>{
-            acc[key] = JSON.parse(JSON.stringify(this.module[key]));
+            acc[key as string] = JSON.parse(JSON.stringify(this.module[key]));
             return acc;
-        }, {} as any)
+        }, {} as BasicMap)
         return {
             state,
             actions: actionHandlers,
             mutations: mutationHandlers,
             getters: getterHandlers,
+            namespaced: false,
+            modules: {}
         };
     }
 }
 
-function Action(target : any, propertyKey: string, descriptor: TypedPropertyDescriptor<BasicAction>) {
+export function Action(target : any, propertyKey: string, descriptor: TypedPropertyDescriptor<(payload ?: any)=>Promise<any>>) {
     target[propertyKey].isAction = true;
 }
-function Mutation(target : any, propertyKey: string, descriptor: TypedPropertyDescriptor<BasicMutation>) {
+export function Mutation(target : any, propertyKey: string, descriptor: TypedPropertyDescriptor<(payload ?: any)=>void>) {
     target[propertyKey].isMutation = true;
 }
-type ModuleCtor<M extends BasicModule> = new ()=>M;
-function Module<M extends BasicModule>(p : { name: NameOf<M>, modules: ModuleArrayOf<M>, namespaced: NamespacedOf<M> }) {
+export type ModuleCtor<M extends BasicClassModule> = new ()=>M;
+type ModuleCtorsOf<A extends BasicClassModule[]> = {
+    [K in keyof A]: A[K] extends BasicClassModule ? ModuleCtor<A[K]> : A[K]
+}
+type ModuleDecoratorArgs<M extends BasicClassModule> = {
+    name: NameOf<M>, 
+    modules: ModuleCtorsOf<ModuleArrayOf<M>>, 
+    namespaced: NamespacedOf<M>
+}
+export function Module<M extends BasicClassModule>(p : ModuleDecoratorArgs<M>) {
     return (constr: ModuleCtor<M>) => {
         return class extends (constr as any) {
             static moduleName = p.name;
             static modules = p.modules;
             static namespaced = p.namespaced;
 
-            getVuexModule() {
-                let module = (new ModuleConverter(this)).createVuexModule();
+            getModuleData() {
+                let module = ModuleConverter.getModuleData(this);
                 module.namespaced = p.namespaced;
                 module.modules = {};
                 for(let smctor of p.modules as any) {
                     let submodule = new smctor();
-                    module.modules[(smctor as any).moduleName] = submodule.getVuexModule();
+                    module.modules[(smctor as any).moduleName] = submodule.getModuleData();
                 }
             }
         } as unknown as ModuleCtor<M>;
     }
 }
-@Module<MyModule>({
-    name: "Hallo",
-    namespaced: false,
-    modules: []
-})
-class MyModule extends TModule<"Hallo">{
-    name = ""
-    count = 0   
 
-    get strnbr() {
-        return this.count + this.name;
-    }
-
-    @Mutation
-    increment() {
-        this.count++;
-    }
-    @Mutation
-    decrement(n : number) {
-        this.count-=n;
-    }
-    @Action
-    async waitget(t:string) {
-        return this.count;
-    }
-
+export function toTypesafeStore<M extends BasicClassModule>(moduleCtor : ModuleCtor<M>) {
+    let module = new moduleCtor() as any;
+    let moduleData = module.getModuleData() as ModuleDataOf<M>;
+    return Wrapper.toTypesafeStore(moduleData);
 }
-let actions : ActionsOf<MyModule>;
-let dispatch : DispatchOf<ActionsOf<MyModule>>;
-let commit : CommitOf<MutationsOf<MyModule>>;
-let module: ModuleOf< ModuleDataOf<MyModule>>;
-
-let moduled : ModuleDataOf<MyModule>;
-
 
 

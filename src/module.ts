@@ -1,5 +1,5 @@
 import { MutationTree, MutationHandlerTreeOf, CommitOf, DefaultMutationHandlerTree } from "./mutation";
-import { ActionTree, ActionHandlerTreeOf, ActionContext, RootDispatchOf, DispatchOf, BasicActionHandlerTree, DefaultActionHandlerTree } from "./action";
+import { ActionTree, ActionHandlerTreeOf, ActionContext, RootDispatchOf, DispatchOf, DefaultActionHandlerTree } from "./action";
 import { GetterTree, GetterHandlerTreeOf, DefaultGetterHandlerTree } from "./getter";
 import { IntersectionOf, BasicMap } from "./types";
 
@@ -8,7 +8,7 @@ export type ModuleData<
     MTree extends MutationTree,
     GTree extends GetterTree = {}, 
     ATree extends ActionTree = {},
-    SubModuleTree extends ModuleReserved<SubModuleTree> = {},
+    SubModuleTree extends ModuleDataTree = {},
     Namespaced extends boolean = true,
     RootModuleData extends BasicModuleData = never
 > = {
@@ -29,7 +29,7 @@ export type ModuleData<
     modules: SubModuleTree;
 }
 export type BasicModuleData = ModuleData<any, any, any, any, any, any, any>;
-type DefaultModuleData = {
+export type DefaultModuleData = {
     namespaced: boolean;
     state: unknown;
     actions: DefaultActionHandlerTree;
@@ -37,31 +37,26 @@ type DefaultModuleData = {
     getters: DefaultGetterHandlerTree;
     modules: DefaultModuleDataTree;
 }
-type ModuleDataTree = {
+export type ModuleDataTree = {
     [key:string]: BasicModuleData;
 };
 type DefaultModuleDataTree = BasicMap<DefaultModuleData>;
 
-export type Reserved<B, T extends B, K extends string> 
-    = Omit<T, K> extends T ? B : never;
-type ModuleReservedKeys = "commit" | "dispatch" | "getters" | "state";
-type ModuleReserved<T extends ModuleDataTree> = Reserved<ModuleDataTree, T, ModuleReservedKeys>;
-
-export type Module<Getters extends GetterTree, C, D, Modules extends ModuleTree> = {
+type Module<Getters extends GetterTree, C, D, Modules extends ModuleTree> = {
     readonly getters: Readonly<Getters>;
     readonly commit: C;
     readonly dispatch: D;
 } & Readonly<Modules>;
 type BasicModule = Module<any,any,any,any> | ModuleTree;
-type DefaultModule = {
+export type DefaultModule = {
     getters: unknown;
     commit: unknown;
     dispatch: unknown;
 } & BasicMap<unknown>;
-export type ModuleTree = {
+type ModuleTree = {
     [key:string]: BasicModule;
 }
-export type ModuleOf<T extends BasicModuleData> 
+type ModuleOf<T extends BasicModuleData> 
     = T extends ModuleData<any, infer MTree, infer GTree, infer ATree, infer SMTree, infer namespaced>  
         ? namespaced extends true 
             ? Module<
@@ -73,7 +68,7 @@ export type ModuleOf<T extends BasicModuleData>
             : ModuleTreeOf<SMTree>
         : never
                    
-export type ModuleTreeOf<T extends ModuleDataTree> = {
+type ModuleTreeOf<T extends ModuleDataTree> = {
     [key in keyof T]: ModuleOf<T[key]>
 }
 
@@ -99,7 +94,7 @@ type RootDataOf<M extends BasicModuleData>
 type RootDataOfTree<T extends ModuleDataTree> = IntersectionOf<{
     [key in keyof T]: RootDataOf<T[key]>;
 }>;
-type StateOf<T extends BasicModuleData>
+export type StateOf<T extends BasicModuleData>
     = T extends ModuleData<infer S, any, any, any, infer MT, any>
         ? S & StateTreeOf<MT>
         : never;
@@ -111,6 +106,6 @@ export type StoreOf<RootModuleData extends BasicModuleData>
     & RootDataOf<RootModuleData> 
     & { state: StateOf<RootModuleData> };
 
-export type Store<Getters extends GetterTree, C, D, Modules extends ModuleTree> = Module<Getters, C, D, Modules>;
-export type BasicStore =  Store<any, any, any, any>;
-type DefaultStore = DefaultModule;
+type Store<Getters extends GetterTree, C, D, Modules extends ModuleTree> = Module<Getters, C, D, Modules>;
+type BasicStore =  Store<any, any, any, any>;
+export type DefaultStore = DefaultModule;

@@ -1,5 +1,6 @@
 import { ModuleData, StoreOf } from "./module";
-import { DeepReadonly } from "./types"
+import { Module, ClassModule, Mutation, Action, toTypesafeStore } from "./class-style";
+
 type PlaylistState = {
     test: boolean,
     soo: string
@@ -16,7 +17,8 @@ type SubPlaylistActions = {
     savedd(payload : { t: boolean }):Promise<void>,
 }
 type PlaylistMutations = {
-    add(payload : {}):void
+    add(payload : {}):void,
+    
 }
 type PlaylistGetters = {
     test: string;
@@ -48,7 +50,8 @@ let y : SubPlaylistModule = {
     mutations: {
         add(state, payload) {
             
-        }
+        },
+        
     },
     getters: {
         testt(state, getters, root) {
@@ -113,5 +116,61 @@ let x : PlaylistModule = {
         comit: y
     }
 }
+@Module<MyModule2>({
+    name: "Hallo2",
+    namespaced: true,
+    modules: []
+})
+class MyModule2 extends ClassModule<"Hallo2", true>{
+    name = ""
+    count = 0   
 
-let z = {} as StoreOf<typeof x>;
+    get strnbr() {
+        return this.count + this.name;
+    }
+
+    @Mutation
+    increment() {
+        this.count++;
+    }
+    @Mutation
+    decrement(n : number) {
+        this.count-=n;
+    }
+    @Action
+    async waitget(t:string) {
+        return this.count;
+    }
+
+}
+@Module<MyModule>({
+    name: "Hallo",
+    namespaced: true,
+    modules: [MyModule2]
+})
+class MyModule extends ClassModule<"Hallo", true, [MyModule2]>{
+    name = ""
+    count = 0   
+
+    get strnbr() {
+        return this.count + this.name;
+    }
+
+    @Mutation
+    increment() {
+        this.count++;
+    }
+    @Mutation
+    decrement(n : number) {
+        this.count-=n;
+    }
+    @Action
+    async waitget(t:string) {
+        return this.count;
+    }
+
+}
+
+
+
+let z = toTypesafeStore(MyModule);
