@@ -109,7 +109,7 @@ const myModuleData : MyModuleData = {
 You can write class-based modules like this
 ```typescript
 import { ClassModule, Module, Action, Mutation } from 'vuex-typesafe';
-@Module({
+@Module<MyModule>({
     name: "myModule",
     namespaced: true,
     modules: [MySubModule, MySubModule2]
@@ -166,9 +166,20 @@ To create and use the store with typesafety you have to do the following:
 ```typescript
 import { toTypesafeStore } from 'vuex-typesafe';
 const store = toTypesafeStore(myModuleData);
+type MyStore = typeof store;
 new Vue({
     store
 })
+```
+To use it in your components you have to declare the store type like this
+```typescript
+import MyStore from '../types/store':
+export default class MyComponent extends Vue {
+    
+    $store !: MyStore;
+    
+    //...
+}
 ```
 The typesafe store works exactly like the vuex store with one exception.
 To access operations of namespaced modules you have to do this
