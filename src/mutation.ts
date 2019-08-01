@@ -39,7 +39,7 @@ type MutationPayload<T extends BasicMutation>
 type Commit<Name extends string | number | symbol, P>
     = unknown extends P
         ? ((name : Name)=>void) & ((args : { type : Name })=>void)
-        : ((name : Name, payload : P)=>void) & ((args : { type : Name } & P)=>void);
+        : ((name : Name, payload : P)=>void) & ( P extends BasicMap ? ((args : { type : Name } & P)=>void) : unknown);
 
 export type DefaultCommit = {
     (name : string, payload : unknown):void;

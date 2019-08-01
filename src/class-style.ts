@@ -39,13 +39,17 @@ type StateKeys<T extends BasicClassModule> = ExcludeRoot<NonFunctionKeys<T> & Wr
 type StateOf<T extends BasicClassModule> = Pick<T, StateKeys<T> >;
 type ActionKeys<T extends BasicClassModule> = ExcludeRoot<WritableKeys<T> & AsyncFunctionKeys<T> & (string | number | symbol)>;
 type ActionsOf<T extends BasicClassModule> = {
-    [key in ActionKeys<T>]: T[key] extends ModuleAction<infer P, infer R> 
+    [key in ActionKeys<T>]: T[key] extends (payload : infer P)=>Promise<infer R>
         ? ModuleAction<P, R>
         : never;
 };
 type MutationKeys<T extends BasicClassModule> = ExcludeRoot<WritableKeys<T> & FunctionKeys<T> & NonAsyncFunctionKeys<T> & (string | number | symbol)>;
 type MutationsOf<T extends BasicClassModule> = {
-    [key in MutationKeys<T>]: T[key] extends Mutation<infer P> ? Mutation<P> : never;
+    [key in MutationKeys<T>]: T[key] extends (payload : infer P)=>void 
+        ? unknown extends P
+            ? ()=>void
+            : (payload : P)=>void
+        : never;
 };
 
 export type ModuleDataOf<T extends BasicClassModule> = ModuleData<
@@ -71,18 +75,36 @@ export class ClassModule<
 }
 export type BasicClassModule = ClassModule<any, any, any, any>;
 
+export class ClassStore<Modules extends BasicClassModule[]=[]> extends ClassModule<"", false, Modules> {};
+export type BasicClassStore = ClassStore<any>;
+
 type NameOf<M extends BasicClassModule> = M extends ClassModule<infer Name, any, any, any> ? Name & (string | number | symbol) : never;
 type ModuleArrayOf<M extends BasicClassModule> = M extends ClassModule<any, any, infer MS, any> ? MS : never;
 type NamespacedOf<M extends BasicClassModule> = M extends ClassModule<any, infer NS, any, any> ? NS & boolean : never;
 type RootModuleDataOf<M extends BasicClassModule> = M extends ClassModule<any, any, any, infer RMD> ? RMD : never;
 
-type ClassModuleTreeOf<M extends BasicClassModule> = Extract<IntersectionOf<{
-    [K in keyof ModuleArrayOf<M>]: ModuleArrayOf<M>[K] extends BasicClassModule ? { [name in NameOf<ModuleArrayOf<M>[K]>]: ModuleArrayOf<M>[K] } : unknown
-}>, BasicMap<BasicClassModule>>
+type ClassModuleTreeOf<M extends BasicClassModule> = Extract<
+    IntersectionOf<{
+        [K in keyof ModuleArrayOf<M>]: ModuleArrayOf<M>[K] extends BasicClassModule ? { [name in NameOf<ModuleArrayOf<M>[K]>]: ModuleArrayOf<M>[K] } : unknown
+    }, {}>,
+    BasicMap<BasicClassModule>>;
 type ModuleDataTreeOfTree<MT extends BasicMap<BasicClassModule>> = {
     [K in keyof MT]: ModuleDataOf<MT[K]>
 }
 type ModuleDataTreeOf<M extends BasicClassModule> = ModuleDataTreeOfTree<ClassModuleTreeOf<M>>;
+
+enum ModuleScopes {
+    Action="Action",
+    Mutation="Mutation",
+    Getter="Getter"
+}
+type ModuleOperations = {
+    commit ?: Vuex.Commit, 
+    getters ?: BasicMap, 
+    state ?: BasicMap, 
+    dispatch ?: Vuex.Dispatch, 
+    root ?: DefaultModule
+}
 
 class ModuleConverter {
 
@@ -114,42 +136,42 @@ class ModuleConverter {
         });
     }
 
-    private createThis(commit ?: Vuex.Commit, getters ?: BasicMap, state ?: BasicMap, dispatch ?: Vuex.Dispatch, root ?: DefaultModule) {
+    private createThis(scope : ModuleScopes, ops : ModuleOperations) {
         return new Proxy({}, {
             get: (_target, key) => {
                 if(key === "root") {
-                    if(!root) {
-                        throw new Error("You can't access the root module here!");
+                    if(!ops.root) {
+                        throw new Error(`You can't access the root module in ${scope}s!`);
                     }
-                    return root;
+                    return ops.root;
                 }
                 else if(this.actionKeys.indexOf(key) != -1) {
-                    if(!dispatch) {
-                        throw new Error("You can't call an action here!");
+                    if(!ops.dispatch) {
+                        throw new Error(`You can't call an action in ${scope}s!`);
                     }
-                    return (payload : unknown) => dispatch(key as string, payload);
+                    return (payload : unknown) => ops.dispatch!(key as string, payload);
                 }
                 else if(this.mutationKeys.indexOf(key) != -1) {
-                    if(!commit) {
-                        throw new Error("You can't call a mutation here!");
+                    if(!ops.commit) {
+                        throw new Error(`You can't call a mutation in ${scope}s!`);
                     }
-                    return (payload : unknown) => commit(key as string, payload);
+                    return (payload : unknown) => ops.commit!(key as string, payload);
                 }
                 else if(this.getterKeys.indexOf(key) != -1) {
-                    if(!getters) {
-                        throw new Error("You can't access getters here!");
+                    if(!ops.getters) {
+                        throw new Error(`You can't access getters in ${scope}s!`);
                     }
-                    return getters[key as string];
+                    return ops.getters[key as string];
                 }
                 else if(this.stateKeys.indexOf(key) != -1) {
-                    if(!state) {
-                        throw new Error("You can't access the state here!");
+                    if(!ops.state) {
+                        throw new Error(`You can't access the state in ${scope}s!`);
                     }
-                    return state[key as string];
+                    return ops.state[key as string];
                 }
                 else if(this.module[key] instanceof Function) {
                     return ()=>{
-                        let newThis = this.createThis(commit, getters, state, dispatch, root);
+                        let newThis = this.createThis(scope, ops);
                         return this.module[key].apply(newThis, arguments);
                     }
                 }
@@ -157,10 +179,10 @@ class ModuleConverter {
             },
             set: (_target, key, value) => {
                 if(this.stateKeys.indexOf(key) != -1) {
-                    if(!state) {
-                        throw new Error("You can't access the state here!");
+                    if(!ops.state || scope === ModuleScopes.Action) {
+                        throw new Error(`You can't set the state in ${scope}s!`);
                     }
-                    state[key as string] = value;
+                    ops.state[key as string] = value;
                     return true;
                 }
                 return false;
@@ -170,21 +192,21 @@ class ModuleConverter {
     private createModuleData() : DefaultModuleData {
         let actionHandlers = this.actionKeys.reduce((acc, key)=>{
             acc[key as string] = (context, payload)=>{
-                let newThis = this.createThis(context.commit, context.getters, context.state, context.dispatch, context.root);
+                let newThis = this.createThis(ModuleScopes.Action, context);
                 return this.module[key].call(newThis, payload);
             };
             return acc;
         }, {} as DefaultActionHandlerTree);
         let mutationHandlers = this.actionKeys.reduce((acc, key)=>{
             acc[key as string] = (state, payload)=>{
-                let newThis = this.createThis(undefined, undefined, state);
+                let newThis = this.createThis(ModuleScopes.Mutation, { state });
                 this.module[key].call(newThis, payload);
             };
             return acc;
         }, {} as DefaultMutationHandlerTree);
         let getterHandlers = this.actionKeys.reduce((acc, key)=>{
             acc[key as string] = (state, getters, root)=>{
-                let newThis = this.createThis(undefined, getters, state, undefined, root);
+                let newThis = this.createThis(ModuleScopes.Getter, { state, getters, root });
                 return Object.getOwnPropertyDescriptor(this.module, key)!.get!.call(newThis);
             };
             return acc;
@@ -237,6 +259,13 @@ export function Module<M extends BasicClassModule>(p : ModuleDecoratorArgs<M>) {
             }
         } as unknown as ModuleCtor<M>;
     }
+}
+export function Store<S extends BasicClassStore>(p : { modules: ModuleCtorsOf<ModuleArrayOf<S>>}) {
+    return Module<S>({
+        name: "" as any,
+        namespaced: false as any,
+        modules: p.modules
+    });
 }
 
 export function toTypesafeStore<M extends BasicClassModule>(moduleCtor : ModuleCtor<M>) {

@@ -96,7 +96,7 @@ export type ActionHandlerTreeOf<T extends ActionTree, Context extends BasicActio
 type Dispatch<Name extends string | number | symbol, P, R> 
     = unknown extends P
         ? ((name : Name) => Promise<R>) & ((args : { type : Name })=>R)
-        : ((name : Name, payload : P) => Promise<R>) & ((args : { type : Name } & P)=>R);
+        : ((name : Name, payload : P) => Promise<R>) & (P extends BasicMap ? ((args : { type : Name } & P)=>R) : unknown);
 type DefaultDispatch = {
     (name : string, payload : unknown):Promise<unknown>;
     (args : { type : string } & unknown):Promise<unknown>;

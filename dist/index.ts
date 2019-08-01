@@ -16,9 +16,11 @@ export type ModuleData<
 > = MModule.ModuleData<State, MTree, GTree, ATree, SubModuleTree, Namespaced, RootModuleData>;
 
 export const ClassModule = ClassStyle.ClassModule;
+export const ClassStore = ClassStyle.ClassStore;
 export const Action = ClassStyle.Action;
 export const Mutation = ClassStyle.Mutation;
 export const Module = ClassStyle.Module;
+export const Store = ClassStyle.Store;
 
 export function toTypesafeStore<M extends MModule.BasicModuleData>(module : M) : MModule.StoreOf<M>;
 export function toTypesafeStore<M extends ClassStyle.BasicClassModule>(module : ClassStyle.ModuleCtor<M>) : MModule.StoreOf<ClassStyle.ModuleDataOf<M>>;

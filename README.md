@@ -1,5 +1,7 @@
 # vuex-typesafe
 
+ATTENTION: THIS PROJECT IS EXPERIMENTAL. DO NOT USE IN COMMERCIAL CODE!
+
 This is a simple way to make Vuex typescript-ready. To type your store/module, you have to declare actions, mutations and getters like this:
 
 ## Actions

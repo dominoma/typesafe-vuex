@@ -1,5 +1,6 @@
 import { ModuleData, StoreOf } from "./module";
 import { Module, ClassModule, Mutation, Action, toTypesafeStore } from "./class-style";
+import { BasicMap } from "./types";
 
 type PlaylistState = {
     test: boolean,
@@ -130,15 +131,15 @@ class MyModule2 extends ClassModule<"Hallo2", true>{
     }
 
     @Mutation
-    increment() {
+    inc() {
         this.count++;
     }
     @Mutation
-    decrement(n : number) {
-        this.count-=n;
+    dec(n : { t: number }) {
+        this.count-=n.t;
     }
     @Action
-    async waitget(t:string) {
+    async wg(t:string) {
         return this.count;
     }
 
@@ -171,6 +172,5 @@ class MyModule extends ClassModule<"Hallo", true, [MyModule2]>{
 
 }
 
-
-
 let z = toTypesafeStore(MyModule);
+z.Hallo2.commit({ type: "dec", t: 1 })

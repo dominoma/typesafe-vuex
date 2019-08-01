@@ -6,9 +6,9 @@ export type UnionOf<T extends {}>
 /**
  * Returns the Intersection of all property types in T 
  */
-export type IntersectionOf<T extends {}> = {
+export type IntersectionOf<T extends {}, D=never> = {
     [key in keyof T]: (dummy : T[key])=>void;
-} extends { [key:string] : (dummy : infer R)=>void } ? R : never;
+} extends { [key:string] : (dummy : infer R)=>void } ? R : D;
 
 export type BasicMap<V = unknown> = {
     [key:string]: V
