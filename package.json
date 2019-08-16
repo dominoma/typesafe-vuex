@@ -1,8 +1,8 @@
 {
-  "name": "vuex-typesafe",
-  "version": "1.0.3",
-  "description": "A project making vuex typescript-ready",
-  "main": "dist/index.ts",
+  "name": "typesafe-vuex-class",
+  "version": "1.0.0",
+  "description": "It's like vuex-class, but typesafe!",
+  "main": "src/index.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -22,9 +22,15 @@
   "homepage": "https://github.com/dominoma/typesafe-vuex#readme",
   "devDependencies": {
     "typescript": "^3.5.2",
-    "@types/node": "^12.0.10"
+    "@types/node": "^12.0.10",
+    "vuex-class": "^0.3.2",
+    "vue": "^2.6.10",
+    "vuex": "^3.1.1"
   },
   "peerDependencies": {
-    "vuex": "^3.1.1"
+    "vue": "^2.6.10",
+    "vuex": "^3.1.1",
+    "vuex-class": "^0.3.2"
   }
+ 
 }
