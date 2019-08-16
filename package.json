@@ -12,7 +12,8 @@
   },
   "keywords": [
     "typescript",
-    "vuex"
+    "vuex",
+    "vuex-class"
   ],
   "author": "Dominik Sander <dominik.m.sander@t-online.de>",
   "license": "MIT",
