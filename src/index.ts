@@ -100,8 +100,10 @@ export default function getTypesafeDecorators<
     Mutation: VuexClass.Action as NamespacedVuexDecorator<R, 'mutations'>,
     State: VuexClass.Action as NamespacedVuexDecorator<R, 'state'>,
     Getter: VuexClass.Action as NamespacedVuexDecorator<R, 'getters'>,
-    namespace: (VuexClass.namespace as unknown) as <m extends keyof M>(
-      module: m
+    namespace: (VuexClass.namespace as unknown) as {} extends M 
+      ? never 
+      : <m extends keyof M>(
+        module: m
     ) => {
       /**
        * Decorator for store actions of that namespace
