@@ -55,17 +55,17 @@ import { State, Action, namespace } from '/path/to/store'
 class MyComponent extends Vue {
 
     @State('field')     // using a string not describing a state field name will result in a compile-time error
-    myField!: boolean    // using the wrong type will result in a compile-time error
+    readonly myField!: boolean    // using the wrong type will result in a compile-time error
 
     @State
-    field!: boolean // using a property name not describing a state field name or the wrong type will result in a compile-time error
+    readonly field!: boolean // using a property name not describing a state field name or the wrong type will result in a compile-time error
 
     @Action('fetchData')
     myFetchData!: (payload: string)=>Promise<boolean> // same here
 }
 
 ```
-
+Note: Properties decorated with `@State` or `@Getter` have to be readonly!
 Using namespaced modules also works just like in `vuex-class`
 
 ```typescript
@@ -77,10 +77,10 @@ const myModule2 = namespace('myModule/myModule2') // invalid module strings resu
 class MyComponent extends Vue {
 
     @myModule2.State('field')     // using a string not describing a state field name of myModule2 will result in a compile-time error
-    myField!: boolean    // using the wrong type will result in a compile-time error
+    readonly myField!: boolean    // using the wrong type will result in a compile-time error
 
     @myModule2.State
-    field!: boolean // using a property name not describing a state field name of myModule2 or the wrong type will result in a compile-time error
+    readonly field!: boolean // using a property name not describing a state field name of myModule2 or the wrong type will result in a compile-time error
 
     @myModule2.Action('fetchData')
     myFetchData!: (payload: string)=>Promise<boolean> // same here
